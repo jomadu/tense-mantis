@@ -7,7 +7,14 @@ spec:
     - http:
         paths:
           - pathType: Prefix
-            path: "/"
+            path: /
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 3000
+          - pathType: Prefix
+            path: /backend
             backend:
               service:
                 name: backend
