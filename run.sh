@@ -15,20 +15,21 @@ usage() {
   cat <<EOF
 Usage: $(basename "${BASH_SOURCE[0]}") [-h] [-v]
 
-1. If kind cluster exists, clean up cluster, else, create kind cluster
-2. Build docker files
-3. Switch to kind cluster context
-4. Load docker images onto kind cluster
-5. Apply manifests to kind cluster
+Bring up, clean, or bring down local cluster
 
 Available options:
 
 -h, --help         Print this help and exit
 -v, --verbose      Print script debug info
---up               Bring up manifest in a kind cluster.
---down             Bring down manifest and kind cluster.
---down-manifest    Bring down only manifest
---down-cluster     Bring down kind cluster
+-u, --up           Bring up local cluster
+-d, --down         Bring down local cluster
+-c, --clean        Clean up local cluster
+
+Requirements:
+
+* kind - https://kind.sigs.k8s.io/
+* kubectl - https://kubernetes.io/docs/tasks/tools/
+* docker - https://docs.docker.com/get-docker/
 EOF
   exit
 }
@@ -61,8 +62,7 @@ parse_params() {
   # default values of variables set from params
   up=0
   down=0
-  down_manifest=0
-  down_cluster=0
+  clean=0
   param=''
 
   while :; do
@@ -70,10 +70,9 @@ parse_params() {
     -h | --help) usage ;;
     -v | --verbose) set -x ;;
     --no-color) NO_COLOR=1 ;;
-    --up) up=1 ;;
-    --down) down=1 ;;
-    --down-manifest) down_manifest=1 ;;
-    --down-cluster) down_cluster=1 ;;
+    -u | --up) up=1 ;;
+    -d | --down) down=1 ;;
+    -c | --clean) clean=1 ;;
     -?*) die "Unknown option: $1" ;;
     *) break ;;
     esac
@@ -82,7 +81,7 @@ parse_params() {
 
   args=("$@")
 
-  [[ "$up" -eq "0" ]] && ! [[ "$down" -eq "0" || "$down_manifest" -eq "0" || "$down_cluster" -eq "0" ]] && die "must specify either --up or ( --down and/or --down-manifest and/or --down-cluster ). 'run.sh --help' for usage."
+  [[ "$up" -eq "0" ]] && ! [[ "$down" -eq "0" || "$clean" -eq "0" ]] && die "must specify either -u | --up or ( -d | --down or -c | --clean ). 'run.sh --help' for usage."
 
   return 0
 }
@@ -215,12 +214,9 @@ if [[ "$up" -eq "1" ]]; then
   apply_manifests
 fi
 
-if [[ "$down" -eq "1" || "$down_cluster" -eq "1" ]]; then
+if [[ "$down" -eq "1" ]]; then
   delete_cluster
 elif [[ "$down_manifest" -eq "1" ]]; then
   clean_up_cluster
 fi
-
-msg "${GREEN}success${NOFORMAT}"
-
 

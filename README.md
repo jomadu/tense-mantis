@@ -1,15 +1,22 @@
-https://kind.sigs.k8s.io/docs/user/ingress/
-kind create cluster --config cluster-config.yaml
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/main/deploy/static/provider/kind/deploy.yaml
-kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=90s
-kubectl apply -f ingress-deployment.yaml
-kubectl apply -f backend/backend-manifest.yaml
-hit up localhost
+# tense-mantis
 
-https://kind.sigs.k8s.io/docs/user/loadbalancer/
-kind create cluster
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/master/manifests/namespace.yaml
-kubectl create secret generic -n metallb-system memberlist --from-literal=secretkey="$(openssl rand -base64 128)"
-kubectl apply -f https://raw.githubusercontent.com/metallb/metallb/master/manifests/metallb.yaml
-docker network inspect -f '{{.IPAM.Config}}' kind
-kubectl apply -f metallb-configmap.yaml
+Just another full stack learning repo. Pay no mind.
+
+## Requirements
+
+- `kind` - https://kind.sigs.k8s.io/
+- `kubectl` - https://kubernetes.io/docs/tasks/tools/
+- `docker` - https://docs.docker.com/get-docker/
+
+## Getting Started
+
+```bash
+# Bring up local cluster
+./run.sh --up
+
+# Clean up local cluster
+./run.sh --clean
+
+# Bring down local cluster
+./run.sh --down
+```
