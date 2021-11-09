@@ -20,3 +20,7 @@ Just another full stack learning repo. Pay no mind.
 # Bring down local cluster
 ./run.sh --down
 ```
+
+## Workflow
+
+https://guides.github.com/introduction/flow/

@@ -3,7 +3,8 @@
 #-------------------------------------------------------------
 # Script Boilerplate
 #-------------------------------------------------------------
-# Reference: betterdev.blog/minimal-safe-bash-script-template/
+# Reference:
+# betterdev.blog/minimal-safe-bash-script-template/
 #-------------------------------------------------------------
 
 set -Eeuo pipefail
@@ -63,7 +64,6 @@ parse_params() {
   up=0
   down=0
   clean=0
-  param=''
 
   while :; do
     case "${1-}" in
@@ -94,14 +94,15 @@ setup_colors
 #-----------------
 
 # Variable
-KIND_CLUSTER_NAME="web-app"
-DOCKER_HUB_USER="jomadu"
-IMAGE_BASE_NAME="web-app"
-FRONTEND_IMAGE_NAME="frontend"
-BACKEND_IMAGE_NAME="backend"
+CONFIG_FILE="run.config"
+COMPONENTS=$(cat $CONFIG_FILE | jq -r '.components')
+COMPONENT_KEYS=( $(echo $COMPONENTS | jq -r 'keys | .[]') )
+KIND_CLUSTER_NAME=$(cat $CONFIG_FILE | jq -r '.variables.kindClusterName')
+DOCKER_HUB_USER=$(cat $CONFIG_FILE | jq -r '.variables.dockerHubUser')
+IMAGE_BASE_NAME=$(cat $CONFIG_FILE | jq -r '.variables.imageBaseName')
 TAG="latest"
-FRONTEND_FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_BASE_NAME}_${FRONTEND_IMAGE_NAME}:${TAG}"
-BACKEND_FULL_IMAGE_NAME="${DOCKER_HUB_USER}/${IMAGE_BASE_NAME}_${BACKEND_IMAGE_NAME}:${TAG}"
+
+[[ "$KIND_CLUSTER_NAME" == "null" || "$DOCKER_HUB_USER" == "null" || "$IMAGE_BASE_NAME"  == "null" || "$COMPONENTS" == "null" ]] && die "run.config must specify dictionary .components, and values for .variables.kindClusterName, .variables.dockerHubUser, .variables.imageBaseName "
 
 wait_for_result() {
   local cmd=$1
@@ -128,6 +129,12 @@ wait_for_result() {
     msg "exceeded number of tries before meeting desired result"
     return 1
   fi
+}
+
+create_full_image_name_ret=
+create_full_image_name () {
+  local component=$1
+  create_full_image_name_ret="${DOCKER_HUB_USER}/${IMAGE_BASE_NAME}_${component}:${TAG}"
 }
 
 cluster_exists() {
@@ -185,17 +192,43 @@ delete_cluster() {
 }
 
 build_dockerfiles() {
-  docker build -t ${FRONTEND_FULL_IMAGE_NAME} ./frontend
-  docker build -t ${BACKEND_FULL_IMAGE_NAME} ./backend
+  for component_key in "${COMPONENT_KEYS[@]}"; do
+    local dockerfiles=( $(echo $COMPONENTS | jq -r --arg component_key "$component_key" '.[$component_key].dockerfile') )
+    for dockerfile in "${dockerfiles[@]}"; do
+      if [[ "$dockerfile" != "null" ]]; then
+        create_full_image_name $component_key
+        docker build -t $create_full_image_name_ret $dockerfile
+      fi
+    done
+  done
 }
 
 load_docker_images_onto_cluster() {
-  kind load docker-image ${FRONTEND_FULL_IMAGE_NAME} --name ${KIND_CLUSTER_NAME}
-  kind load docker-image ${BACKEND_FULL_IMAGE_NAME} --name ${KIND_CLUSTER_NAME}
+  for component_key in "${COMPONENT_KEYS[@]}"; do
+    local dockerfiles=( $(echo $COMPONENTS | jq -r --arg component_key "$component_key" '.[$component_key].dockerfile') )
+    for dockerfile in "${dockerfiles[@]}"; do
+      if [[ "$dockerfile" != "null" ]]; then
+        create_full_image_name $component_key
+        kind load docker-image $create_full_image_name_ret --name $KIND_CLUSTER_NAME
+      fi
+    done
+  done
 }
 
 apply_manifests() {
-  kubectl apply -f ./backend/backend-manifest.yaml -f ./frontend/frontend-manifest.yaml -f ./ingress-deployment.yaml
+  local apply_args=""
+  for component_key in "${COMPONENT_KEYS[@]}"; do
+    local manifests=( $(echo $COMPONENTS | jq -r --arg component_key "$component_key" '.[$component_key].manifest') )
+    for manifest in "${manifests[@]}"; do
+      if [[ "$manifest" != "null" ]]; then
+        apply_args="${apply_args} -f $manifest"
+      fi
+    done
+  done
+
+  if [[ ! -z "$apply_args" ]]; then
+    kubectl apply $apply_args
+  fi
 }
 
 # ------------
@@ -216,7 +249,7 @@ fi
 
 if [[ "$down" -eq "1" ]]; then
   delete_cluster
-elif [[ "$down_manifest" -eq "1" ]]; then
+elif [[ "$clean" -eq "1" ]]; then
   clean_up_cluster
 fi
 
