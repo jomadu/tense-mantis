@@ -1,0 +1,7 @@
+name: test-actions
+on: [push]
+jobs:
+  echo-im-an-action:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "I'm an action!"
