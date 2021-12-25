@@ -175,7 +175,7 @@ create_cluster() {
   fi
 
   msg "waiting for ingress controller to be ready..."
-  kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
+  kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=240s
 
   if [[ "$?" -ne "0" ]]; then
     delete_cluster
