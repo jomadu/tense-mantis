@@ -1,10 +1,10 @@
 kind: PersistentVolume
 apiVersion: v1
 metadata:
-  name: db-pv-volume
+  name: database-pv-volume
   labels:
     type: local
-    app: db
+    app: database
 spec:
   storageClassName: manual
   capacity:
@@ -17,9 +17,9 @@ spec:
 kind: PersistentVolumeClaim
 apiVersion: v1
 metadata:
-  name: db-pv-claim
+  name: database-pv-claim
   labels:
-    app: db
+    app: database
 spec:
   storageClassName: manual
   accessModes:
@@ -31,68 +31,68 @@ spec:
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: db-config
+  name: database-config
   labels:
-    app: db
+    app: database
 data:
-  POSTGRES_DB: db
+  POSTGRES_DB: database
   POSTGRES_USER: admin
   POSTGRES_PASSWORD: test123
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
+  name: database
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: db
+      app: database
   template:
     metadata:
       labels:
-        app: db
+        app: database
     spec:
       containers:
-        - name: db
+        - name: database
           image: postgres:10.1
           imagePullPolicy: "IfNotPresent"
           ports:
             - containerPort: 5432
           envFrom:
             - configMapRef:
-                name: db-config
+                name: database-config
           volumeMounts:
             - mountPath: /var/lib/postgresql/data
-              name: db
+              name: database
       volumes:
-        - name: db
+        - name: database
           persistentVolumeClaim:
-            claimName: db-pv-claim
+            claimName: database-pv-claim
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: db
+  name: database
   labels:
-    app: db
+    app: database
 spec:
   ports:
     - protocol: TCP
       port: 5432
   selector:
-    app: db
+    app: database
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: db-ext
+  name: database-ext
   labels:
-    app: db-ext
+    app: database-ext
 spec:
   type: NodePort
   selector:
-    app: db
+    app: database
   ports:
     - protocol: TCP
       port: 5432
